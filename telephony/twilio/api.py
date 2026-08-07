@@ -2,11 +2,34 @@ import json
 
 import frappe
 from frappe import _
+from twilio.request_validator import RequestValidator
 from werkzeug.wrappers import Response
 
 from telephony.utils import link_call_with_contact, link_call_with_doc
 
 from .twilio_handler import IncomingCall, Twilio, TwilioCallDetails
+
+
+def _validate_twilio_signature():
+    settings = frappe.get_doc("TP Twilio Settings")
+    if not settings.enabled:
+        raise frappe.PermissionError(_("Twilio request signature validation failed."))
+
+    auth_token = settings.get_password("auth_token", raise_exception=False)
+    if not auth_token:
+        raise frappe.PermissionError(_("Twilio request signature validation failed."))
+
+    signature = frappe.get_request_header("X-Twilio-Signature")
+    if not signature:
+        raise frappe.PermissionError(_("Twilio request signature validation failed."))
+
+    validator = RequestValidator(auth_token)
+    if not validator.validate(
+        frappe.local.request.url,
+        frappe.local.request.form,
+        signature,
+    ):
+        raise frappe.PermissionError(_("Twilio request signature validation failed."))
 
 
 @frappe.whitelist()
@@ -37,9 +60,15 @@ def generate_access_token():
     return {"token": token}
 
 
-@frappe.whitelist(allow_guest=True)
+# Public webhook: Twilio must reach this endpoint without a session;
+# _validate_twilio_signature() authenticates the request before any side effects.
+@frappe.whitelist(  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
+    allow_guest=True
+)
 def voice(**kwargs):
     """This is a webhook called by twilio to get instructions when the voice call request comes to twilio server."""
+
+    _validate_twilio_signature()
 
     def _get_caller_number(caller):
         identity = caller.replace("client:", "").strip()
@@ -50,9 +79,6 @@ def voice(**kwargs):
     twilio = Twilio.connect()
     if not twilio:
         return
-
-    assert args.AccountSid == twilio.account_sid
-    assert args.ApplicationSid == twilio.application_sid
 
     # Generate TwiML instructions to make a call
     from_number = _get_caller_number(args.Caller)
@@ -66,8 +92,14 @@ def voice(**kwargs):
     return Response(resp.to_xml(), mimetype="text/xml")
 
 
-@frappe.whitelist(allow_guest=True)
+# Public webhook: Twilio must reach this endpoint without a session;
+# _validate_twilio_signature() authenticates the request before any side effects.
+@frappe.whitelist(  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
+    allow_guest=True
+)
 def twilio_incoming_call_handler(**kwargs):
+    _validate_twilio_signature()
+
     args = frappe._dict(kwargs)
     call_details = TwilioCallDetails(args)
     create_call_log(call_details)
@@ -141,8 +173,13 @@ def update_call_log(call_sid, status=None):
     return
 
 
-@frappe.whitelist(allow_guest=True)
+# Public webhook: Twilio must reach this endpoint without a session;
+# _validate_twilio_signature() authenticates the request before any side effects.
+@frappe.whitelist(  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
+    allow_guest=True
+)
 def update_recording_info(**kwargs):
+    _validate_twilio_signature()
     try:
         args = frappe._dict(kwargs)
         recording_url = args.RecordingUrl
@@ -153,8 +190,13 @@ def update_recording_info(**kwargs):
         frappe.log_error(title=_("Failed to capture Twilio recording"))
 
 
-@frappe.whitelist(allow_guest=True)
+# Public webhook: Twilio must reach this endpoint without a session;
+# _validate_twilio_signature() authenticates the request before any side effects.
+@frappe.whitelist(  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
+    allow_guest=True
+)
 def update_call_status_info(**kwargs):
+    _validate_twilio_signature()
     try:
         args = frappe._dict(kwargs)
         parent_call_sid = args.ParentCallSid
