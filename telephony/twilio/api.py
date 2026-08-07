@@ -62,9 +62,9 @@ def generate_access_token():
 
 # Public webhook: Twilio must reach this endpoint without a session;
 # _validate_twilio_signature() authenticates the request before any side effects.
-@frappe.whitelist(
+@frappe.whitelist(  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
     allow_guest=True
-)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
+)
 def voice(**kwargs):
     """This is a webhook called by twilio to get instructions when the voice call request comes to twilio server."""
 
@@ -94,9 +94,9 @@ def voice(**kwargs):
 
 # Public webhook: Twilio must reach this endpoint without a session;
 # _validate_twilio_signature() authenticates the request before any side effects.
-@frappe.whitelist(
+@frappe.whitelist(  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
     allow_guest=True
-)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
+)
 def twilio_incoming_call_handler(**kwargs):
     _validate_twilio_signature()
 
@@ -175,9 +175,9 @@ def update_call_log(call_sid, status=None):
 
 # Public webhook: Twilio must reach this endpoint without a session;
 # _validate_twilio_signature() authenticates the request before any side effects.
-@frappe.whitelist(
+@frappe.whitelist(  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
     allow_guest=True
-)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
+)
 def update_recording_info(**kwargs):
     _validate_twilio_signature()
     try:
@@ -192,9 +192,9 @@ def update_recording_info(**kwargs):
 
 # Public webhook: Twilio must reach this endpoint without a session;
 # _validate_twilio_signature() authenticates the request before any side effects.
-@frappe.whitelist(
+@frappe.whitelist(  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
     allow_guest=True
-)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
+)
 def update_call_status_info(**kwargs):
     _validate_twilio_signature()
     try:
