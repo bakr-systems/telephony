@@ -76,28 +76,32 @@ def make_a_call(
             _("Please setup Exotel intergration"), title=_("Integration Not Enabled")
         )
 
-    endpoint = get_exotel_endpoint("Calls/connect.json?details=true")
-
-    if not from_number:
-        from_number = frappe.get_value(
-            "TP Telephony Agent", {"user": frappe.session.user}, "mobile_no"
+    frappe.new_doc("TP Call Log").check_permission("create")
+    agent = frappe.db.get_value(
+        "TP Telephony Agent",
+        {"user": frappe.session.user},
+        ["mobile_no", "exotel_number"],
+        as_dict=True,
+    )
+    if (
+        not agent
+        or (from_number and from_number != agent.mobile_no)
+        or (caller_id and caller_id != agent.exotel_number)
+    ):
+        frappe.throw(
+            _("Calls must use the numbers assigned to your Telephony Agent"),
+            frappe.PermissionError,
         )
-
-    if not caller_id:
-        caller_id = frappe.get_value(
-            "TP Telephony Agent", {"user": frappe.session.user}, "exotel_number"
-        )
+    from_number, caller_id = agent.mobile_no, agent.exotel_number
+    if link_doctype or link_docname:
+        if not (link_doctype and link_docname):
+            frappe.throw(_("Both link type and document are required"))
+        frappe.get_doc(link_doctype, link_docname).check_permission("read")
 
     if not caller_id:
         frappe.throw(
             _("You do not have Exotel Number set in your Telephony Agent"),
             title=_("Exotel Number Missing"),
-        )
-
-    if caller_id and caller_id not in get_all_exophones():
-        frappe.throw(
-            _("Exotel Number {0} is not valid").format(caller_id),
-            title=_("Invalid Exotel Number"),
         )
 
     if not from_number:
@@ -106,6 +110,13 @@ def make_a_call(
             title=_("Mobile Number Missing"),
         )
 
+    if caller_id and caller_id not in get_all_exophones():
+        frappe.throw(
+            _("Exotel Number {0} is not valid").format(caller_id),
+            title=_("Invalid Exotel Number"),
+        )
+
+    endpoint = get_exotel_endpoint("Calls/connect.json?details=true")
     record_call = frappe.db.get_single_value("TP Exotel Settings", "record_call")
 
     try:

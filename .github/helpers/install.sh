@@ -49,4 +49,4 @@ CI=Yes bench build --app frappe &
 bench --site test_site reinstall --yes
 
 bench --verbose --site test_site install-app telephony
-bench --verbose --site test_site run-tests --module telephony.twilio.test_api
+bench --verbose --site test_site run-tests --app telephony
