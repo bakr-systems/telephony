@@ -1,10 +1,7 @@
 import frappe
+from frappe import _
 
-from telephony.utils import (
-    _get_contact_by_phone_number,
-    link_call_with_contact,
-    parse_call_log,
-)
+from telephony.utils import _get_contact_by_phone_number, parse_call_log
 
 
 @frappe.whitelist()
@@ -59,16 +56,16 @@ def get_user_default_calling_medium():
 
 @frappe.whitelist()
 def create_call_log(
-    id,
-    telephony_medium,
-    from_number,
-    to_number,
-    duration,
-    status,
-    call_type,
-    caller,
-    receiver,
-    links,
+    id: str,
+    telephony_medium: str,
+    from_number: str,
+    to_number: str,
+    duration: float | int | str,
+    status: str,
+    call_type: str,
+    caller: str | None,
+    receiver: str | None,
+    links: list[dict] | str | None,
 ):
     call_log = frappe.get_doc(
         {
@@ -82,23 +79,38 @@ def create_call_log(
             "duration": duration,
             "links": links,
         }
-    ).insert(ignore_permissions=True)
-
+    )
+    call_log.check_permission("create")
+    actor = receiver if call_type == "Incoming" else caller
+    if actor and actor != frappe.session.user:
+        frappe.throw(
+            _("You can only record calls for yourself"), frappe.PermissionError
+        )
     if call_type == "Incoming":
-        call_log.receiver = receiver
+        call_log.receiver = frappe.session.user
     else:
-        call_log.caller = caller
+        call_log.caller = frappe.session.user
 
+    # Explicit links must be authorized before the first write. Automatic
+    # contact matching is optional and must not attach an unreadable contact.
+    for link in call_log.links:
+        frappe.get_doc(link.link_doctype, link.link_name).check_permission("read")
     contact_number = from_number if call_type == "Incoming" else to_number
-    link_call_with_contact(contact_number, call_log)
+    contact = _get_contact_by_phone_number(contact_number)
+    if (
+        contact
+        and contact.get("name")
+        and frappe.has_permission("Contact", ptype="read", doc=contact["name"])
+    ):
+        call_log.link_with_reference_doc("Contact", contact["name"])
 
-    call_log.save(ignore_permissions=True)
+    call_log.insert()
 
     return call_log
 
 
 @frappe.whitelist()
-def get_call_log(name):
+def get_call_log(name: str):
     call = frappe.get_cached_doc(
         "TP Call Log",
         name,
@@ -114,9 +126,9 @@ def get_call_log(name):
             "recording_url",
             "creation",
         ],
-    ).as_dict()
-
-    call = parse_call_log(call)
+    )
+    call.check_permission("read")
+    call = parse_call_log(call.as_dict())
     return call
 
 
