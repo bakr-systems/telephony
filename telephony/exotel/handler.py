@@ -69,7 +69,11 @@ def handle_request(**kwargs):
 # Outgoing Call
 @frappe.whitelist()
 def make_a_call(
-    to_number, from_number=None, caller_id=None, link_doctype=None, link_docname=None
+    to_number: str,
+    from_number: str | None = None,
+    caller_id: str | None = None,
+    link_doctype: str | None = None,
+    link_docname: str | None = None,
 ):
     if not is_integration_enabled():
         frappe.throw(

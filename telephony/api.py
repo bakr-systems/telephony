@@ -56,16 +56,16 @@ def get_user_default_calling_medium():
 
 @frappe.whitelist()
 def create_call_log(
-    id,
-    telephony_medium,
-    from_number,
-    to_number,
-    duration,
-    status,
-    call_type,
-    caller,
-    receiver,
-    links,
+    id: str,
+    telephony_medium: str,
+    from_number: str,
+    to_number: str,
+    duration: float | int | str,
+    status: str,
+    call_type: str,
+    caller: str | None,
+    receiver: str | None,
+    links: list[dict] | str | None,
 ):
     call_log = frappe.get_doc(
         {
@@ -110,7 +110,7 @@ def create_call_log(
 
 
 @frappe.whitelist()
-def get_call_log(name):
+def get_call_log(name: str):
     call = frappe.get_cached_doc(
         "TP Call Log",
         name,
